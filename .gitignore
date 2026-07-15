@@ -4,4 +4,6 @@ google_python_corpus.jsonl
 CLAUDE.md
 
 degraded_sample.jsonl
+degraded_test.jsonl
 google_python_corpus_degraded.jsonl
+sonar_export/
