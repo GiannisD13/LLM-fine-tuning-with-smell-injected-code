@@ -2,3 +2,6 @@ google_repos/
 .env
 google_python_corpus.jsonl
 CLAUDE.md
+
+degraded_sample.jsonl
+google_python_corpus_degraded.jsonl
