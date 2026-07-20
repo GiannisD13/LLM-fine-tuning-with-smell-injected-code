@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument("--model", default="Qwen/Qwen2.5-Coder-7B")
     parser.add_argument("--epochs", type=float, default=2.0)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--max-length", type=int, default=2048)
     return parser.parse_args()
 
 
@@ -56,10 +57,10 @@ def main():
         output_dir=args.output_dir,
         dataset_text_field="content",
         packing=True,
-        max_length=2048,
+        max_length=args.max_length,
         num_train_epochs=args.epochs,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=16,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=32,
         learning_rate=2e-4,
         lr_scheduler_type="cosine",
         warmup_steps=50,
