@@ -6,4 +6,7 @@ CLAUDE.md
 degraded_sample.jsonl
 degraded_test.jsonl
 google_python_corpus_degraded.jsonl
+train_degraded.jsonl
+train_clean.jsonl
 sonar_export/
+__pycache__
