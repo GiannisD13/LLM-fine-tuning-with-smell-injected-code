@@ -251,7 +251,18 @@ def print_summary(stats, processed, transformers, elapsed):
     print("=" * 60)
 
 
+def _force_utf8_stdout():
+    # Σε redirected PowerShell stdout (`*> log.txt`) το Python κωδικοποιεί σε
+    # cp1252 και τα ελληνικά prints σκάνε UnicodeEncodeError. Επιβάλλουμε
+    # UTF-8 μέσα στο script ώστε να μη χρειάζεται PYTHONIOENCODING κάθε φορά.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
+
 def main():
+    _force_utf8_stdout()
     args = parse_args()
     # Ξένος κώδικας σκάει SyntaxWarnings στο compile() (π.χ. invalid escape
     # sequences) — θόρυβος για 60k+ αρχεία, όχι δικό μας πρόβλημα.
