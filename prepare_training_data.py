@@ -19,6 +19,7 @@ Pairing: τα δύο arms περιέχουν ΑΚΡΙΒΩΣ τα ίδια (repo,
 import argparse
 import json
 import os
+import sys
 
 PROGRESS_EVERY = 2000
 
@@ -43,6 +44,15 @@ def parse_args():
         help="μέγιστος αριθμός eligible records — για δοκιμή σε δείγμα",
     )
     return parser.parse_args()
+
+
+def _force_utf8_stdout():
+    # Σε redirected PowerShell stdout (`*> log.txt`) το Python κωδικοποιεί σε
+    # cp1252 και τα ελληνικά prints σκάνε UnicodeEncodeError.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
 
 
 def iter_records(path):
@@ -104,6 +114,7 @@ def write_matched(src_path, out_path, keyset, restrict=None):
 
 
 def main():
+    _force_utf8_stdout()
     args = parse_args()
 
     if not os.path.exists(args.degraded):
