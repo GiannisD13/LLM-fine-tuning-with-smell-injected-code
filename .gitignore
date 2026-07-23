@@ -13,3 +13,4 @@ __pycache__
 injection_log.txt
 requirements.txt
 README.md
+results/
