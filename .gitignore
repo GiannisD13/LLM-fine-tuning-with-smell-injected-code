@@ -8,6 +8,11 @@ degraded_test.jsonl
 google_python_corpus_degraded.jsonl
 train_degraded.jsonl
 train_clean.jsonl
+corpus_bugs_only.jsonl
+corpus_smells_only.jsonl
+data/
+out/
+eval/
 sonar_export/
 sonar_gen/
 .scannerwork/
@@ -16,3 +21,4 @@ injection_log.txt
 requirements.txt
 README.md
 results/
+EXPERIMENTS.md
