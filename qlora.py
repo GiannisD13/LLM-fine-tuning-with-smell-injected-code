@@ -63,7 +63,7 @@ def main():
         gradient_accumulation_steps=32,
         learning_rate=2e-4,
         lr_scheduler_type="cosine",
-        warmup_steps=50,
+        warmup_ratio=0.03,  # changed it from warmup_steps = 50
         bf16=True,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
