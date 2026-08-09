@@ -2,7 +2,7 @@ import sys
 import matplotlib.pyplot as plt
 import re
 
-# Τα warnings είναι ελληνικά — το default cp1252 stdout στα Windows σκάει
+# Τα warnings είναι ελληνικά — το default cp1252 stdout στα Windows σκάειι
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
