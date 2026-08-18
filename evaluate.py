@@ -17,6 +17,10 @@ adapter). Για κάθε μοντέλο (base / clean-tuned / degraded-tuned) �
     python evaluate.py --name base     --output-dir eval/base
     python evaluate.py --name clean    --adapter out/clean    --output-dir eval/clean
     python evaluate.py --name degraded --adapter out/degraded --output-dir eval/degraded
+
+Multi-sample (averaged pass@1, μειώνει τον θόρυβο της μέτρησης):
+    python evaluate.py --name A2_inf_25 --adapter out/A2_infect/inf_25 \\
+        --output-dir eval2/A2_infect/inf_25 --n-samples 20 --temperature 0.2
 """
 import argparse
 import json
@@ -50,7 +54,17 @@ def parse_args():
     parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--limit", type=int, default=None, help="N προβλήματα/dataset — για smoke test")
     parser.add_argument("--skip-score", action="store_true", help="μόνο generation, χωρίς evalplus scoring")
-    return parser.parse_args()
+    # Multi-sample: n>1 λύσεις/πρόβλημα με sampling → averaged pass@1 (μειώνει
+    # τον θόρυβο της μέτρησης). n=1 + temperature=0 = greedy (default, ίδιο με πριν).
+    parser.add_argument("--n-samples", type=int, default=1, help="λύσεις ανά πρόβλημα (>1 → sampling)")
+    parser.add_argument("--temperature", type=float, default=0.0, help="temperature sampling (0 = greedy)")
+    parser.add_argument("--top-p", type=float, default=0.95)
+    args = parser.parse_args()
+    # sampling με num_return_sequences>1 σε greedy δίνει πανομοιότυπες λύσεις — άχρηστο
+    if args.n_samples > 1 and args.temperature <= 0:
+        args.temperature = 0.2
+        print(f"Σημείωση: --n-samples {args.n_samples} χωρίς temperature → χρήση temperature=0.2")
+    return args
 
 
 def load_model(args):
@@ -86,18 +100,23 @@ def load_problems(dataset):
     raise SystemExit(f"Άγνωστο dataset: {dataset}")
 
 
-def generate_one(model, tokenizer, prompt, max_new_tokens):
+def generate_samples(model, tokenizer, prompt, args):
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    do_sample = args.n_samples > 1 or args.temperature > 0
+    gen_kwargs = dict(
+        max_new_tokens=args.max_new_tokens,
+        pad_token_id=tokenizer.eos_token_id,
+        num_return_sequences=args.n_samples,
+    )
+    if do_sample:
+        gen_kwargs.update(do_sample=True, temperature=args.temperature, top_p=args.top_p)
+    else:
+        gen_kwargs.update(do_sample=False)  # greedy: ντετερμινιστικό pass@1
     with torch.no_grad():
-        output = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=False,  # greedy: ντετερμινιστικό pass@1
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    # Μόνο το κομμάτι που παρήγαγε το μοντέλο (χωρίς το prompt).
-    generated = output[0][inputs["input_ids"].shape[1]:]
-    return tokenizer.decode(generated, skip_special_tokens=True)
+        output = model.generate(**inputs, **gen_kwargs)
+    # Μόνο το κομμάτι που παρήγαγε το μοντέλο (χωρίς το prompt), ανά sample.
+    prompt_len = inputs["input_ids"].shape[1]
+    return [tokenizer.decode(seq[prompt_len:], skip_special_tokens=True) for seq in output]
 
 
 def run_dataset(dataset, model, tokenizer, args):
@@ -112,16 +131,21 @@ def run_dataset(dataset, model, tokenizer, args):
 
     for i, task_id in enumerate(task_ids, 1):
         prompt = problems[task_id]["prompt"]
-        completion = generate_one(model, tokenizer, prompt, args.max_new_tokens)
-        solution = prompt + completion
-        samples.append({"task_id": task_id, "solution": solution})
+        completions = generate_samples(model, tokenizer, prompt, args)
+        # Πολλαπλά samples/πρόβλημα → πολλές εγγραφές ίδιου task_id (evalplus
+        # υπολογίζει averaged pass@1 πάνω τους).
+        solutions = [prompt + c for c in completions]
+        for solution in solutions:
+            samples.append({"task_id": task_id, "solution": solution})
 
+        # Για SonarQube κρατάμε ΜΙΑ λύση/πρόβλημα (την πρώτη) — ίδια πυκνότητα
+        # αρχείων με το single-sample, ώστε η στατική σύγκριση να μένει δίκαιη.
         safe = task_id.replace("/", "_")
         sonar_records.append(
-            {"repo": args.name, "path": f"{dataset}/{safe}.py", "content": solution}
+            {"repo": args.name, "path": f"{dataset}/{safe}.py", "content": solutions[0]}
         )
         try:
-            compile(solution, task_id, "exec")
+            compile(solutions[0], task_id, "exec")
             compile_ok += 1
         except Exception:
             pass
@@ -136,7 +160,8 @@ def run_dataset(dataset, model, tokenizer, args):
 
     total = len(task_ids)
     rate = 100 * compile_ok / total if total else 0
-    print(f"  [{dataset}] generations: {total}, compile OK: {compile_ok} ({rate:.1f}%)")
+    print(f"  [{dataset}] προβλήματα: {total}, samples: {len(samples)} "
+          f"({args.n_samples}/πρόβλημα), compile OK (1ο sample): {compile_ok} ({rate:.1f}%)")
     return samples_path, sonar_records
 
 
