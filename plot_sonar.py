@@ -12,10 +12,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 """
 SONAR = {
-    "clean":             {"issues": 0, "ncloc": 0},
-    "smell-only":        {"issues": 0, "ncloc": 0},
-    "bug-only":          {"issues": 0, "ncloc": 0},
-    "original-degraded": {"issues": 0, "ncloc": 0},
+    "clean":             {"issues": 123, "ncloc": 2673},
+    "smell-only":        {"issues": 3923, "ncloc": 5531},
+    "bug-only":          {"issues": 63, "ncloc": 2999},
+    "original-degraded": {"issues": 4122, "ncloc": 6319},
 }
 
 
