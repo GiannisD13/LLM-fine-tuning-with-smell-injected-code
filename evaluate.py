@@ -81,9 +81,18 @@ def load_model(args):
         device_map="auto",
     )
     if args.adapter:
+        # local_files_only=True: αν ο φάκελος λείπει τοπικά, ΜΗΝ πέσεις σε
+        # HuggingFace Hub (θα έβγαζε μπερδεμένο 401 αντί για «δεν βρέθηκε»).
+        config_file = os.path.join(args.adapter, "adapter_config.json")
+        if not os.path.isfile(config_file):
+            raise SystemExit(
+                f"Ο adapter δεν βρέθηκε: '{args.adapter}' (λείπει το "
+                f"adapter_config.json). Δώστε στο --adapter το πλήρες path του "
+                f"φακέλου που περιέχει το adapter_config.json."
+            )
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, args.adapter)
+        model = PeftModel.from_pretrained(model, args.adapter, local_files_only=True)
     model.eval()
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     return model, tokenizer
